@@ -34,7 +34,7 @@ class JJWXCDownload():
             'sub': '%B5%C7+%A1%A1%C8%EB'
         }
         login_response = self.request_session.post(login_url, data=login_data)
-        print(login_response.content.decode('GB2312'))
+        print(login_response.content.decode('GBK'))
 
     def save_cookies(self):
         with open('cookies.pickle', 'wb') as f:
@@ -77,8 +77,8 @@ class JJWXCDownload():
 
     @staticmethod
     def prase_chapter(chapter: requests.Response):
-        chapter.encoding = 'GB2312'
-        # chapter_html = chapter.content.decode('GB2312')
+        chapter.encoding = 'GBK'
+        # chapter_html = chapter.content.decode('GBK')
         resp = BeautifulSoup(chapter.text, "html.parser")
         uls = resp.findAll("ul")
         text = ''
