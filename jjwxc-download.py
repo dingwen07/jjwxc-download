@@ -103,8 +103,8 @@ def get_content_text(tag: bs4.element.Tag):
     return text
 
 if __name__ == "__main__":
-    d = JJWXCDownload(3413181)
+    d = JJWXCDownload(1)
     # JJWXCDownload.console_login(d, 'username', 'password')
     d.load_cookies()
-    chapter_text = d.get_chapter_text(40)
+    chapter_text = d.get_chapter_text(1)
     print(chapter_text)
