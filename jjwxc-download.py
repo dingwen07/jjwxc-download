@@ -5,6 +5,7 @@ from html.parser import HTMLParser
 import bs4
 from bs4 import BeautifulSoup
 import pickle
+import os
 
 class JJWXCDownload():
     def __init__(self, novel_id: int) -> None:
@@ -103,8 +104,15 @@ def get_content_text(tag: bs4.element.Tag):
     return text
 
 if __name__ == "__main__":
-    d = JJWXCDownload(1)
+    d = JJWXCDownload(1308990)
     # JJWXCDownload.console_login(d, 'username', 'password')
     d.load_cookies()
-    chapter_text = d.get_chapter_text(1)
-    print(chapter_text)
+
+    if not os.path.exists('save/{}/'.format(str(d.novel_id))):
+        os.makedirs('save/{}/'.format(str(d.novel_id)))
+
+    for c in range(1, 87):
+        chapter_text = d.get_chapter_text(c)
+        with open('save/{}/{}.txt'.format(str(d.novel_id), str(c)), 'wb') as f:
+            f.write(chapter_text.encode('utf-8'))
+
