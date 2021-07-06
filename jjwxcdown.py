@@ -1,82 +1,62 @@
 from __future__ import annotations
+
+import time
+
 import requests
 import random
-from html.parser import HTMLParser
 import bs4
-from bs4 import BeautifulSoup
 import pickle
 import os
+from bs4 import BeautifulSoup
+from selenium import webdriver
 
-class JJWXCDownload():
+
+class JJWXCDownload:
     def __init__(self, novel_id: int) -> None:
-        self.set_novel(novel_id)
-        self.request_session = requests.Session()
+        self.novel_id = novel_id
+        self.requests_session = requests.Session()
 
     def set_novel(self, novel_id: int) -> None:
         self.novel_id = novel_id
 
-    def login_getcode(self) -> None:
+    def login_getcode(self) -> requests.Response:
         url = 'https://m.jjwxc.net//my/login?login_mode=jjwxc'
-        self.request_session.get(url)
+        self.requests_session.get(url)
         auth_code_url = 'https://m.jjwxc.net/codeurl/createCode?var={}'.format(str(random.random()))
-        return self.request_session.get(auth_code_url)
-    
-    def login(self, username: str, password: str, auth_code: str) -> None:
-        login_url = 'https://m.jjwxc.net/login/wapLogin'
-        referer = 'http://www.jjwxc.net/onebook.php?novelid={}'.format(str(self.novel_id))
-        login_data = {
-            'referer': referer,
-            'login_mode': 'jjwxc',
-            'loginname': username,
-            'loginpass': password,
-            'checkcode': auth_code,
-            'cookietime': 1,
-            'sub': '%B5%C7+%A1%A1%C8%EB'
-        }
-        login_response = self.request_session.post(login_url, data=login_data)
-        print(login_response.content.decode('GBK'))
+        return self.requests_session.get(auth_code_url)
+
+    def login(self) -> None:
+        cookies = selenium_login_firefox()
+        set_cookies(cookies, self.requests_session)
 
     def save_cookies(self):
         with open('cookies.pickle', 'wb') as f:
-            pickle.dump(self.request_session.cookies, f)
+            pickle.dump(self.requests_session.cookies, f)
 
     def load_cookies(self):
         with open('cookies.pickle', 'rb') as f:
-            self.request_session.cookies.update(pickle.load(f))
+            self.requests_session.cookies.update(pickle.load(f))
 
     def fetch_chapter(self, chapter_no: int, free=True) -> requests.Response:
         if free:
             chapter_url = 'https://m.jjwxc.net/book2/{}/{}'.format(str(self.novel_id), str(chapter_no))
         else:
             chapter_url = 'https://m.jjwxc.net/vip/{}/{}'.format(str(self.novel_id), str(chapter_no))
-        return self.request_session.get(chapter_url)
+        return self.requests_session.get(chapter_url)
 
     def get_chapter_text(self, chapter_no: int) -> str:
-        text = JJWXCDownload.prase_chapter(self.fetch_chapter(chapter_no))
+        text = JJWXCDownload.parse_chapter(self.fetch_chapter(chapter_no))
         if text.find('<返回>') >= 0:
-            text = JJWXCDownload.prase_chapter(self.fetch_chapter(chapter_no, False))
+            text = JJWXCDownload.parse_chapter(self.fetch_chapter(chapter_no, False))
         return text
 
     @staticmethod
     def console_login(jjdown: JJWXCDownload, username='', password='') -> None:
-        if username == '':
-            username = input('Username> ')
-        if password == '':
-            password = input('Password> ')
-        code_response = jjdown.login_getcode()
-        with open('code.jpg', 'wb') as file:
-            file.write(code_response.content)
-        import tkinter as tk
-        root_win = tk.Tk()
-        img_code = tk.PhotoImage(file='code.jpg')
-        label_img = tk.Label(root_win, image = img_code)
-        label_img.pack()
-        auth_code = input('VerifyCode> ')
-        root_win.destroy()
-        jjdown.login(username, password, auth_code)
+        print('WARN: JJWXCDownload.console_login is deprecated ,it has been replaced by JJWXCDownload.login')
+        jjdown.login()
 
     @staticmethod
-    def prase_chapter(chapter: requests.Response):
+    def parse_chapter(chapter: requests.Response):
         chapter.encoding = 'GBK'
         # chapter_html = chapter.content.decode('GBK')
         resp = BeautifulSoup(chapter.text, "html.parser")
@@ -91,8 +71,6 @@ class JJWXCDownload():
         text = text.replace('\u3000\u3000', '\n').strip('\n').strip(' ')
         return text
 
-def JJChapterParser(HTMLParser):
-    pass
 
 def get_content_text(tag: bs4.element.Tag):
     text = ''
@@ -103,9 +81,35 @@ def get_content_text(tag: bs4.element.Tag):
             text += str(c)
     return text
 
+
+def set_cookies(cookies,
+                ua: str = False,
+                session: requests.sessions.Session = requests.Session()):
+    if ua != False:
+        session.headers.update({"user-agent": ua})
+    for cookie in cookies:
+        session.cookies.set(cookie['name'],
+                            cookie['value'],
+                            domain=cookie['domain'])
+    return session
+
+
+def selenium_login_firefox():
+    print('Please login via the browser then come back.')
+    print('DO NOT CLOSE THE BROWSER!!!')
+    time.sleep(1)
+    browser = webdriver.Firefox()
+    browser.get('https://m.jjwxc.net/')
+    input('Press <Enter> to continue.')
+    cookies = browser.get_cookies()
+    browser.close()
+    return cookies
+
+
 if __name__ == "__main__":
     d = JJWXCDownload(1308990)
-    # JJWXCDownload.console_login(d, 'username', 'password')
+    d.login()
+    d.save_cookies()
     d.load_cookies()
 
     if not os.path.exists('save/{}/'.format(str(d.novel_id))):
@@ -115,4 +119,3 @@ if __name__ == "__main__":
         chapter_text = d.get_chapter_text(c)
         with open('save/{}/{}.txt'.format(str(d.novel_id), str(c)), 'wb') as f:
             f.write(chapter_text.encode('utf-8'))
-
